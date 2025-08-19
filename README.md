@@ -99,33 +99,76 @@ cp .env.example .env.local
 npm run dev
 ```
 
-#### 4. Development with Docker (Alternative)
+#### 4. Development with Docker (Recommended)
+
+**Configure Ports (Optional):**
+```bash
+# Copy and customize Docker environment
+cp .docker/.env.example .docker/.env
+# Edit .docker/.env to set your preferred ports if you have conflicts
+```
+
+**Quick Start:**
+```bash
+# Windows
+.docker\start-dev.bat
+
+# Linux/Mac  
+.docker/start-dev.sh
+```
+
+**Manual Setup:**
 ```bash
 # Start all services
-docker-compose up -d
+docker-compose -f .docker/docker-compose.dev.yml up -d
 
-# Run database migrations
-docker-compose exec backend php bin/console doctrine:migrations:migrate
+# Install dependencies and setup
+docker-compose -f .docker/docker-compose.dev.yml exec php composer install
+docker-compose -f .docker/docker-compose.dev.yml exec php bin/console lexik:jwt:generate-keypair
+docker-compose -f .docker/docker-compose.dev.yml exec php bin/console doctrine:migrations:migrate
+
+# Install frontend dependencies and build
+cd frontend && npm install && npm run build
+```
+
+**Default Access Points (customizable in .docker/.env):**
+- Frontend & API: http://localhost:8080
+- phpMyAdmin: http://localhost:8081  
+- Redis Commander: http://localhost:8082
+
+**Stop Environment:**
+```bash
+.docker\stop-dev.bat
+# or manually: docker-compose -f .docker/docker-compose.dev.yml down
+```
+
+**Port Configuration:**
+Edit `.docker/.env` to customize ports if you have conflicts with other Docker instances:
+```env
+NGINX_PORT=8080          # Frontend & API
+PHPMYADMIN_PORT=8081     # Database management  
+REDIS_COMMANDER_PORT=8082 # Redis management
+MYSQL_PORT=3306          # MySQL database
+REDIS_PORT=6379          # Redis cache
 ```
 
 ### Environment Configuration
 
 #### Backend (.env.local)
 ```env
-# Database
-DATABASE_URL="mysql://username:password@127.0.0.1:3306/dating_platform?serverVersion=8.0.32&charset=utf8mb4"
+# Copy from backend/.env.example and customize
+# For Docker development (default):
+DATABASE_URL="mysql://app:!ChangeMe!@database:3306/app?serverVersion=8.0.32&charset=utf8mb4"
+REDIS_URL=redis://redis:6379
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# For local development (uncomment and adjust):
+# DATABASE_URL="mysql://app:!ChangeMe!@127.0.0.1:3306/app?serverVersion=8.0.32&charset=utf8mb4"
+# REDIS_URL=redis://localhost:6379
 
 # JWT Authentication
 JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
 JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
 JWT_PASSPHRASE=your_secure_passphrase
-
-# App Configuration
-APP_ENV=dev
-APP_SECRET=your_app_secret_key
 ```
 
 #### Frontend (.env.local)
