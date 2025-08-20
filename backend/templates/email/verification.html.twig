@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Verification</title>
+</head>
+<body>
+    <h1>Hi {{ user.email }}!</h1>
+
+    <p>
+        Please verify your email address by clicking the following link:
+    </p>
+
+    <p>
+        <a href="{{ verificationUrl }}">Verify my email</a>
+    </p>
+
+    <p>
+        This link will expire in 24 hours.
+    </p>
+
+    <p>
+        Thanks!
+    </p>
+</body>
+</html>

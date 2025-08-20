@@ -35,7 +35,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string The hashed password
      */
     #[ORM\Column]
+    #[Assert\NotBlank(message: 'Password is required')]
+    #[Assert\Length(min: 8, minMessage: 'Your password must be at least 8 characters long')]
     private ?string $password = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE)]
+    #[Assert\NotBlank(message: 'Date of birth is required')]
+    #[Assert\LessThanOrEqual('-18 years', message: 'You must be at least 18 years old to register')]
+    private ?\DateTimeInterface $dateOfBirth = null;
 
     #[ORM\Column]
     private ?int $tokenBalance = 0;
@@ -216,6 +223,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmailVerificationExpiresAt(?\DateTimeInterface $emailVerificationExpiresAt): static
     {
         $this->emailVerificationExpiresAt = $emailVerificationExpiresAt;
+
+        return $this;
+    }
+
+    public function getDateOfBirth(): ?\DateTimeInterface
+    {
+        return $this->dateOfBirth;
+    }
+
+    public function setDateOfBirth(\DateTimeInterface $dateOfBirth): static
+    {
+        $this->dateOfBirth = $dateOfBirth;
 
         return $this;
     }

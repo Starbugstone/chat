@@ -93,6 +93,16 @@ services:
     networks:
       - dating_platform
 
+  # Mailpit for email testing
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ${CONTAINER_PREFIX}_mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - dating_platform
+
 volumes:
   dating_platform_mysql_data:
   dating_platform_redis_data:

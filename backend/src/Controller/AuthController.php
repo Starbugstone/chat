@@ -29,71 +29,25 @@ class AuthController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        // Basic validation
-        if (!isset($data['email']) || !isset($data['password'])) {
-            return $this->json([
-                'error' => [
-                    'code' => 'VALIDATION_ERROR',
-                    'message' => 'Email and password are required',
-                    'timestamp' => (new \DateTime())->format('c')
-                ]
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Check if user already exists
-        if ($this->userRepository->findOneBy(['email' => $data['email']])) {
-            return $this->json([
-                'error' => [
-                    'code' => 'EMAIL_ALREADY_EXISTS',
-                    'message' => 'A user with this email already exists',
-                    'timestamp' => (new \DateTime())->format('c')
-                ]
-            ], Response::HTTP_CONFLICT);
-        }
-
-        // Validate email format
-        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-            return $this->json([
-                'error' => [
-                    'code' => 'INVALID_EMAIL',
-                    'message' => 'Invalid email format',
-                    'timestamp' => (new \DateTime())->format('c')
-                ]
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Validate password strength
-        if (strlen($data['password']) < 8) {
-            return $this->json([
-                'error' => [
-                    'code' => 'WEAK_PASSWORD',
-                    'message' => 'Password must be at least 8 characters long',
-                    'timestamp' => (new \DateTime())->format('c')
-                ]
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Create new user
         $user = new User();
-        $user->setEmail($data['email']);
-        
-        // Hash password
-        $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
-        $user->setPassword($hashedPassword);
+        $user->setEmail($data['email'] ?? null);
+        $user->setPassword($data['password'] ?? null);
+        if (isset($data['dateOfBirth'])) {
+            try {
+                $user->setDateOfBirth(new \DateTime($data['dateOfBirth']));
+            } catch (\Exception $e) {
+                // Do nothing, validator will catch it
+            }
+        }
 
-        // Generate email verification token
-        $verificationToken = bin2hex(random_bytes(32));
-        $user->setEmailVerificationToken($verificationToken);
-        $user->setEmailVerificationExpiresAt(new \DateTime('+24 hours'));
-
-        // Validate entity
         $errors = $this->validator->validate($user);
+
         if (count($errors) > 0) {
             $errorMessages = [];
             foreach ($errors as $error) {
-                $errorMessages[] = $error->getMessage();
+                $errorMessages[$error->getPropertyPath()][] = $error->getMessage();
             }
-            
+
             return $this->json([
                 'error' => [
                     'code' => 'VALIDATION_ERROR',
@@ -101,12 +55,24 @@ class AuthController extends AbstractController
                     'details' => $errorMessages,
                     'timestamp' => (new \DateTime())->format('c')
                 ]
-            ], Response::HTTP_BAD_REQUEST);
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+
+        // Hash password
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $user->getPassword());
+        $user->setPassword($hashedPassword);
+
+        // Generate email verification token
+        $verificationToken = bin2hex(random_bytes(32));
+        $user->setEmailVerificationToken($verificationToken);
+        $user->setEmailVerificationExpiresAt(new \DateTime('+24 hours'));
 
         // Save user
         $this->entityManager->persist($user);
         $this->entityManager->flush();
+
+        // Send verification email
+        $this->emailService->sendVerificationEmail($user);
 
         return $this->json([
             'message' => 'User registered successfully. Please check your email for verification.',
